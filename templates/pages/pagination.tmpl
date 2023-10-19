@@ -1,0 +1,30 @@
+
+{{ define "pagination" }}
+
+                <div div="row">
+                    <ul class="pagination pagination-lg justify-content-end">
+                        <li class="page-item">
+                            <a class="page-link rounded-0 mr-3 shadow-sm border-top-0 border-left-0" href="{{ .pagination.PrevPage }}" tabindex="-1">Previous</a>
+                        </li>
+                        
+                        {{range $i, $link := .pagination.Links }}
+
+                        {{ $active := "" }}
+                        {{ if $link.IsCurrentPage }}
+                            {{ $active = "active" }}
+
+                        {{end}}
+                        
+                        <li class="page-item">
+                            <a class="page-link {{ $active }} rounded-0 mr-3 shadow-sm border-top-0 border-left-0" href="{{ $link.Url }}">{{ $link.Page }}</a>
+                        </li>
+
+                        {{ end }}
+
+                        <li class="page-item">
+                            <a class="page-link rounded-0 shadow-sm border-top-0 border-left-0 text-dark" href="{{ .pagination.NextPage }}">Next</a>
+                        </li>
+                    </ul>
+                </div>
+
+{{ end }}
