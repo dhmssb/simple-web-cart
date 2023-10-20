@@ -16,3 +16,18 @@ type User struct {
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt
 }
+
+func (u *User) FindByEmail(db *gorm.DB, username string) (*User, error) {
+	var (
+		err  error
+		user User
+	)
+
+	err = db.Debug().Model(User{}).Where("username = ?", username).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+
+}

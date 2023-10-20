@@ -14,7 +14,7 @@ func UserFaker(db *gorm.DB) *models.User {
 		ID:        uuid.New().String(),
 		Name:      faker.Name(),
 		Username:  faker.Username(),
-		Password:  faker.Password(),
+		Password:  "password",
 		CreatedAt: time.Time{},
 		UpdatedAt: time.Time{},
 		DeletedAt: gorm.DeletedAt{},

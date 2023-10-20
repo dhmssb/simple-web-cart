@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/urfave/cli"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -61,6 +62,7 @@ type PaginationParams struct {
 var (
 	store               = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
 	sessionShoppingCart = "shopping-cart-session"
+	sessionUser         = "user-session"
 )
 
 func (server *Server) Initialize(dbConf DBConfig) {
@@ -166,4 +168,17 @@ func GetPaginationLinks(conf *AppConfig, params PaginationParams) (PaginationLin
 		TotalPages:  totalPages,
 		Links:       links,
 	}, nil
+}
+
+func IsLoggedIn(r *http.Request) bool {
+	session, _ := store.Get(r, sessionUser)
+	if session.Values["id"] == nil {
+		return false
+	}
+
+	return true
+}
+
+func ComparePassword(password string, hashedPwd string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(hashedPwd), []byte(password)) == nil
 }
