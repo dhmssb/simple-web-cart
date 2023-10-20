@@ -1,6 +1,8 @@
 package models
 
 import (
+	"fmt"
+
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -23,7 +25,7 @@ func (c *Cart) GetCart(db *gorm.DB, cartID string) (*Cart, error) {
 		cart Cart
 	)
 
-	err = db.Debug().Model(Cart{}).Where("id = ?", cartID).First(&cart).Error
+	err = db.Debug().Preload("CartItems").Model(Cart{}).Where("id = ?", cartID).First(&cart).Error
 	if err != nil {
 		return nil, err
 	}
@@ -49,6 +51,54 @@ func (c *Cart) CreateCart(db *gorm.DB, cartID string) (*Cart, error) {
 	}
 
 	return cart, nil
+}
+
+func (c *Cart) CalculateCart(db *gorm.DB, cartID string) (*Cart, error) {
+	cartBaseTotalPrice := 0.0
+	cartTaxAmount := 0.0
+	cartDiscountAmount := 0.0
+	cartGrandTotal := 0.0
+	CartCoupon := 0
+
+	for _, item := range c.CartItems {
+		itemBaseTotal, _ := item.BaseTotal.Float64()
+		itemTaxAmount, _ := item.TaxAmount.Float64()
+		itemSubTotalTaxAmount := itemTaxAmount * float64(item.Qty)
+		itemDiscountAmount, _ := item.DiscountAmount.Float64()
+		itemSubTotalDiscountAmount := itemDiscountAmount * float64(item.Qty)
+		itemSubTotal, _ := item.SubTotal.Float64()
+
+		cartBaseTotalPrice += itemBaseTotal
+		cartTaxAmount += itemSubTotalTaxAmount
+		cartDiscountAmount += itemSubTotalDiscountAmount
+		cartGrandTotal += itemSubTotal
+	}
+
+	var updateCart, cart Cart
+
+	if updateCart.GrandTotal.GreaterThan(decimal.NewFromInt(50000)) {
+		CartCoupon++
+	}
+
+	if updateCart.GrandTotal.GreaterThan(decimal.NewFromInt(100000)) {
+		// Calculate how many multiples of 100,000 fit in updateItem.BaseTotal
+		multiplesCoupon := int(updateCart.GrandTotal.Div(decimal.NewFromInt(100000)).IntPart())
+		CartCoupon += multiplesCoupon
+	}
+
+	updateCart.BaseTotalPrice = decimal.NewFromFloat(cartBaseTotalPrice)
+	updateCart.TaxAmount = decimal.NewFromFloat(cartTaxAmount)
+	updateCart.DiscountAmount = decimal.NewFromFloat(cartDiscountAmount)
+	updateCart.GrandTotal = decimal.NewFromFloat(cartGrandTotal)
+	updateCart.Coupon = CartCoupon
+
+	err := db.Debug().First(&cart, "id = ?", c.ID).Updates(updateCart).Error
+	fmt.Println("INIQUERYLAIN -->", err)
+
+	if err != nil {
+		return nil, err
+	}
+	return &cart, nil
 }
 
 func (c *Cart) AddItem(db *gorm.DB, item CartItem) (*CartItem, error) {
@@ -97,6 +147,7 @@ func (c *Cart) AddItem(db *gorm.DB, item CartItem) (*CartItem, error) {
 	updateItem.SubTotal = decimal.NewFromFloat(subTotal)
 
 	err = db.Debug().First(&existItem, "id = ?", existItem.ID).Updates(updateItem).Error
+	fmt.Println("INIQUERY -->", err)
 	if err != nil {
 		return nil, err
 	}
