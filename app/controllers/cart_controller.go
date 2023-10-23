@@ -24,8 +24,10 @@ func (server *Server) GetCart(w http.ResponseWriter, r *http.Request) {
 	items, _ := cart.GetItems(server.DB, cart.ID)
 
 	_ = render.HTML(w, http.StatusOK, "cart", map[string]interface{}{
-		"cart":  cart,
-		"items": items,
+		"cart":    cart,
+		"items":   items,
+		"success": GetFlash(w, r, "success"),
+		"error":   GetFlash(w, r, "error"),
 	})
 
 }
@@ -62,10 +64,13 @@ func (server *Server) AddItemToCart(w http.ResponseWriter, r *http.Request) {
 	product, err := productModel.FindByID(server.DB, producID)
 	if err != nil {
 		http.Redirect(w, r, "/products/"+product.Slug, http.StatusSeeOther)
+		return
 	}
 
 	if qty > product.Stock {
+		SetFlash(w, r, "error", "Stock tidak mencukupi")
 		http.Redirect(w, r, "/products/"+product.Slug, http.StatusSeeOther)
+		return
 	}
 
 	var cart *models.Cart
@@ -77,12 +82,12 @@ func (server *Server) AddItemToCart(w http.ResponseWriter, r *http.Request) {
 		Qty:       qty,
 	})
 	if err != nil {
+		SetFlash(w, r, "error", "error")
 		http.Redirect(w, r, "/products/"+product.Slug, http.StatusSeeOther)
 
 	}
-
+	SetFlash(w, r, "success", "Item berhasil ditambahkan")
 	http.Redirect(w, r, "/carts", http.StatusSeeOther)
-
 }
 
 func (server *Server) UpdateCart(w http.ResponseWriter, r *http.Request) {

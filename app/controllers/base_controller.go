@@ -63,6 +63,7 @@ var (
 	store               = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
 	sessionShoppingCart = "shopping-cart-session"
 	sessionUser         = "user-session"
+	sessionFlash        = "flash-session"
 )
 
 func (server *Server) Initialize(dbConf DBConfig) {
@@ -168,6 +169,38 @@ func GetPaginationLinks(conf *AppConfig, params PaginationParams) (PaginationLin
 		TotalPages:  totalPages,
 		Links:       links,
 	}, nil
+}
+
+func SetFlash(w http.ResponseWriter, r *http.Request, name, value string) {
+	sessions, err := store.Get(r, sessionFlash)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sessions.AddFlash(value, name)
+	sessions.Save(r, w)
+}
+
+func GetFlash(w http.ResponseWriter, r *http.Request, name string) []string {
+	sessions, err := store.Get(r, sessionFlash)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return nil
+	}
+
+	fm := sessions.Flashes(name)
+	if len(fm) < 0 {
+		return nil
+	}
+
+	sessions.Save(r, w)
+	var flashes []string
+	for _, fl := range fm {
+		flashes = append(flashes, fl.(string))
+	}
+
+	return flashes
 }
 
 func IsLoggedIn(r *http.Request) bool {

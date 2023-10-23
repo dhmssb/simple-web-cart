@@ -145,6 +145,20 @@
                                 </li>
                             </ul>
 
+{{ if .success }}
+        <div class="alert alert-success">
+            {{ range $i, $msg := .success }}
+            {{ $msg }}<br/>
+            {{ end }}
+        </div>
+        {{ end }}
+        {{ if .error }}
+        <div class="alert alert-danger">
+            {{ range $i, $msg := .error }}
+            {{ $msg }}<br/>
+            {{ end }}
+        </div>
+        {{ end }}
                             <h6>Description:</h6>
                             <p> {{ .product.Description }}</p>
                             <ul class="list-inline">
