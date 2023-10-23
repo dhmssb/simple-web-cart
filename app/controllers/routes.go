@@ -13,6 +13,7 @@ func (server *Server) InitializeRoutes() {
 
 	server.Router.HandleFunc("/login", server.Login).Methods("GET")
 	server.Router.HandleFunc("/login", server.DoLogin).Methods("POST")
+	server.Router.HandleFunc("/logout", server.Logout).Methods("GET")
 
 	server.Router.HandleFunc("/products", server.Products).Methods("GET")
 	server.Router.HandleFunc("/products/{slug}", server.GetProductBySlug).Methods("GET")

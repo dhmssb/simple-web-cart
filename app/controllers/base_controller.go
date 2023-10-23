@@ -215,3 +215,21 @@ func IsLoggedIn(r *http.Request) bool {
 func ComparePassword(password string, hashedPwd string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPwd), []byte(password)) == nil
 }
+
+func (server *Server) CurrentUser(w http.ResponseWriter, r *http.Request) *models.User {
+	if !IsLoggedIn(r) {
+		return nil
+	}
+
+	session, _ := store.Get(r, sessionUser)
+
+	userModel := models.User{}
+	user, err := userModel.FindByID(server.DB, session.Values["id"].(string))
+	if err != nil {
+		session.Values["id"] = nil
+		session.Save(r, w)
+		return nil
+	}
+
+	return user
+}
