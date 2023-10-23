@@ -7,17 +7,26 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
+	"github.com/unrolled/render"
 	"gorm.io/gorm"
 )
 
 func (server *Server) GetCart(w http.ResponseWriter, r *http.Request) {
 
+	render := render.New(render.Options{
+		Layout: "layout",
+	})
 	var cart *models.Cart
 
 	cartID := GetShoppingCartID(w, r)
 	cart, _ = GetShoppingCart(server.DB, cartID)
-	fmt.Println("cartID +_+_+_+_+_", cart.ID)
-	fmt.Println("cart item +_+_+_+_+_", cart.Items)
+	items, _ := cart.GetItems(server.DB, cart.ID)
+
+	_ = render.HTML(w, http.StatusOK, "cart", map[string]interface{}{
+		"cart":  cart,
+		"items": items,
+	})
 
 }
 
@@ -40,8 +49,9 @@ func GetShoppingCart(db *gorm.DB, cartID string) (*models.Cart, error) {
 	}
 
 	existCart.CalculateCart(db, cartID)
+	updatedCart, _ := cart.GetCart(db, cartID)
 
-	return existCart, nil
+	return updatedCart, nil
 }
 
 func (server *Server) AddItemToCart(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +72,7 @@ func (server *Server) AddItemToCart(w http.ResponseWriter, r *http.Request) {
 
 	cartID := GetShoppingCartID(w, r)
 	cart, _ = GetShoppingCart(server.DB, cartID)
-	_, err = cart.AddItem(server.DB, models.Item{
+	_, err = cart.AddItem(server.DB, models.CartItem{
 		ProductID: producID,
 		Qty:       qty,
 	})
@@ -75,83 +85,35 @@ func (server *Server) AddItemToCart(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// func GetShoppingCartID(w http.ResponseWriter, r *http.Request) string {
-// 	session, _ := store.Get(r, sessionShoppingCart)
-// 	if session.Values["cart-id"] == nil {
-// 		session.Values["cart-id"] = uuid.New().String()
-// 		session.Save(r, w)
-// 	}
+func (server *Server) UpdateCart(w http.ResponseWriter, r *http.Request) {
+	cartID := GetShoppingCartID(w, r)
+	cart, _ := GetShoppingCart(server.DB, cartID)
 
-// 	return fmt.Sprintf("%v", session.Values["cart-id"])
-// }
+	for _, item := range cart.CartItems {
+		qty, _ := strconv.Atoi(r.FormValue(item.ID))
 
-// func GetShoppingCart(db *gorm.DB, cartID string) (*models.Cart, error) {
-// 	var cart models.Cart
+		_, err := cart.UpdateItemQty(server.DB, item.ID, qty)
+		if err != nil {
+			http.Redirect(w, r, "/carts", http.StatusSeeOther)
+		}
+	}
+	http.Redirect(w, r, "/carts", http.StatusSeeOther)
+}
 
-// 	existCart, err := cart.GetCart(db, cartID)
-// 	if err != nil {
-// 		existCart, _ = cart.CreateCart(db, cartID)
-// 	}
+func (server *Server) RemoveItemByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
 
-// 	_, _ = existCart.CalculateCart(db, cartID)
+	if vars["id"] == "" {
+		http.Redirect(w, r, "/carts", http.StatusSeeOther)
+	}
 
-// 	return existCart, nil
+	cartID := GetShoppingCartID(w, r)
+	cart, _ := GetShoppingCart(server.DB, cartID)
 
-// }
+	err := cart.RemoveItemByID(server.DB, vars["id"])
+	if err != nil {
+		http.Redirect(w, r, "/carts", http.StatusSeeOther)
+	}
+	http.Redirect(w, r, "/carts", http.StatusSeeOther)
 
-// func (server *Server) GetCart(w http.ResponseWriter, r *http.Request) {
-// 	render := render.New(render.Options{
-// 		Layout:     "layout",
-// 		Extensions: []string{".html", ".tmpl"},
-// 	})
-
-// 	var (
-// 		cart *models.Cart
-// 		err  error
-// 	)
-// 	cartID := GetShoppingCartID(w, r)
-// 	cart, _ = GetShoppingCart(server.DB, cartID)
-// 	items, _ := cart.GetItems(server.DB, cartID)
-
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	_ = render.HTML(w, http.StatusOK, "cart", map[string]interface{}{
-// 		"cart":  cart,
-// 		"items": items,
-// 	})
-// }
-
-// func (server *Server) AddItemToCart(w http.ResponseWriter, r *http.Request) {
-// 	productID := r.FormValue("product_id")
-// 	qty, _ := strconv.Atoi(r.FormValue("qty"))
-
-// 	productModel := models.Product{}
-// 	product, err := productModel.FindByID(server.DB, productID)
-// 	if err != nil {
-// 		http.Redirect(w, r, "/products/"+product.Slug, http.StatusSeeOther)
-// 		return
-// 	}
-
-// 	if qty > product.Stock {
-// 		// SetFlash(w, r, "error", "Stok tidak mencukupi")
-// 		http.Redirect(w, r, "/products/"+product.Slug, http.StatusSeeOther)
-// 		return
-// 	}
-
-// 	var cart *models.Cart
-
-// 	cartID := GetShoppingCartID(w, r)
-// 	cart, _ = GetShoppingCart(server.DB, cartID)
-// 	_, err = cart.AddItem(server.DB, models.CartItem{
-// 		ProductID: productID,
-// 		Qty:       qty,
-// 	})
-// 	if err != nil {
-// 		http.Redirect(w, r, "/products/"+product.Slug, http.StatusSeeOther)
-// 	}
-
-// 	// SetFlash(w, r, "success", "Item berhasil ditambahkan")
-// 	http.Redirect(w, r, "/carts", http.StatusSeeOther)
-// }
+}
